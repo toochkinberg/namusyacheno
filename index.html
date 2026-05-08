@@ -8,8 +8,36 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; }
+    :root {
+      --bg-main: #030712;
+      --bg-card: #111827;
+
+      --accent: #7c3aed;
+      --accent-hover: #8b5cf6;
+
+      --calendar-work: #1E1B4B;
+      --calendar-work-border: #6366f1;
+
+      --calendar-extra: #312e81;
+      --calendar-extra-border: #a855f7;
+
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+
+      --sidebar-active: #7c3aed;
+      --today-ring: #a78bfa;
+
+      --chart-good: #4ade80;
+      --chart-mid: #c084fc;
+      --chart-bad: #f87171;
+    }
+
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+    }
+
     .big-button { transition: all 0.1s ease; }
+    
     .big-button:active { transform: scale(0.95); }
     
     .calendar-day {
@@ -20,26 +48,57 @@
     .calendar-day:hover { background-color: #374151 !important; }
 
     .working-day { 
-      background-color: #1E1B4B !important; 
-      border-color: #6366f1 !important;
+      background-color: var(--calendar-work) !important; 
+      border-color: var(--calendar-work-border) !important;
     }
+
     .extra-day { 
-      background-color: #312e81 !important; 
-      border-color: #a855f7 !important;
+      background-color: var(--calendar-extra) !important; 
+      border-color: var(--calendar-extra-border) !important;
     }
 
     /* Сайдбар */
     .sidebar-btn.active {
-      background-color: #4f46e5;
+      background-color: var(--sidebar-active);
       color: white;
+    }
+
+    .theme-card {
+      background-color: var(--bg-card) !important;
+      box-shadow: 0 0 20px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .theme-button {
+      background-color: var(--accent) !important;
+      box-shadow: 0 0 25px color-mix(in srgb, var(--accent) 35%, transparent);
+      transition: all 0.2s ease;
+    }
+
+    .theme-button:hover {
+      background-color: var(--accent-hover) !important;
+      transform: translateY(-1px);
+    }
+
+    .theme-button:hover {
+      background-color: var(--accent-hover) !important;
+    }
+
+    .theme-bg {
+      background-color: var(--bg-main) !important;
+    }
+
+    .today-day {
+      border-color: var(--today-ring) !important;
+      box-shadow: 0 0 0 1px var(--today-ring);
     }
   </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen flex">
+<body id="appBody" class="text-gray-100 min-h-screen flex">
 
 <!-- Сайдбар -->
-<div class="w-52 bg-gray-900 border-r border-gray-700 min-h-screen p-4 flex flex-col">
-  <h1 class="text-2xl font-bold text-violet-400 mb-10 px-4">Намусячено</h1>
+<div class="w-52 theme-card border-r border-gray-700 min-h-screen p-4 flex flex-col">
+  <h1 id="title" class="text-2xl font-bold mb-10 px-4">Намусячено</h1>
   
   <button onclick="switchTab(0)" class="sidebar-btn active flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 w-full text-left" id="tab0">
     <i class="fas fa-home"></i> Сегодня
@@ -57,16 +116,16 @@
 
   <!-- TAB 0: Сегодня -->
   <div id="tabContent0">
-    <div class="bg-gray-900 rounded-3xl p-8 text-center shadow-xl mb-8">
+    <div class="theme-card rounded-3xl p-8 text-center shadow-xl mb-8">
       <div class="text-7xl font-bold mb-2" id="count">0</div>
       <div class="text-gray-400 text-sm mb-6">из <span id="targetDisplay" class="cursor-pointer underline" onclick="editTarget()">25</span></div>
       
-      <button onclick="increment()" class="big-button w-full bg-violet-600 hover:bg-violet-500 text-white text-4xl font-bold py-12 rounded-2xl mb-8 shadow-lg">
+      <button id="mainButton" onclick="increment()" class="big-button theme-button w-full text-white text-4xl font-bold py-12 rounded-2xl mb-8 shadow-lg">
         +1 НАМУСЯЧЕНО
       </button>
 
       <div class="w-full bg-gray-800 h-4 rounded-full overflow-hidden">
-        <div id="progress" class="h-full bg-violet-500 w-0 transition-all"></div>
+        <div id="progress" class="h-full w-0 transition-all"></div>
       </div>
       <div class="flex justify-between text-sm mt-2 text-gray-400">
         <div id="percent">0%</div>
@@ -83,30 +142,30 @@
       <!-- Левая колонка - Дашборд -->
       <div class="space-y-6">
         <div class="grid grid-cols-2 gap-4">
-          <div class="bg-gray-900 rounded-3xl p-6">
+          <div class="theme-card rounded-3xl p-6">
             <div class="text-gray-400">Всего намусячено</div>
             <div id="totalCount" class="text-5xl font-bold mt-3">0</div>
           </div>
-          <div class="bg-gray-900 rounded-3xl p-6">
+          <div class="theme-card rounded-3xl p-6">
             <div class="text-gray-400">Среднее в день</div>
             <div id="avgPerDay" class="text-5xl font-bold mt-3">0</div>
           </div>
         </div>
 
         <!-- Новый блок: % выполнения за текущий месяц -->
-        <div class="bg-gray-900 rounded-3xl p-6">
+        <div class="theme-card rounded-3xl p-6">
           <div class="text-gray-400 mb-1">Выполнение плана за текущий месяц</div>
-          <div id="monthPercent" class="text-6xl font-bold text-violet-400">0%</div>
+          <div id="monthPercent" class="text-6xl font-bold">0%</div>
           <div id="monthInfo" class="text-sm text-gray-400"></div>
         </div>
 
         <button onclick="setMonthlyPlan()" 
-                class="w-full bg-violet-600 hover:bg-violet-500 py-4 rounded-2xl font-medium flex items-center justify-center gap-2">
+          class="theme-button w-full py-4 rounded-2xl font-medium flex items-center justify-center gap-2">
           <i class="fas fa-calendar-plus"></i>
           Установить план на месяц
         </button>
 
-        <div class="bg-gray-900 rounded-3xl p-6">
+        <div class="theme-card rounded-3xl p-6">
           <p class="text-gray-400 mb-4">За последние 30 дней</p>
           <div class="h-64">
             <canvas id="chart30"></canvas>
@@ -128,7 +187,7 @@
     <h2 class="text-2xl font-bold">Настройки</h2>
 
     <!-- Название -->
-    <div class="bg-gray-900 rounded-3xl p-6">
+    <div class="theme-card rounded-3xl p-6">
       <label class="block text-sm mb-2 text-gray-400">Название счётчика</label>
       <input id="customTitle" value="Намусячено" 
              class="w-full bg-gray-800 p-4 rounded-2xl text-lg">
@@ -137,7 +196,7 @@
     </div>
 
     <!-- Темы -->
-    <div class="bg-gray-900 rounded-3xl p-6">
+    <div class="theme-card rounded-3xl p-6">
       <label class="block text-sm mb-3 text-gray-400">Цветовая тема</label>
       <div class="grid grid-cols-5 gap-3">
         <button onclick="setTheme('violet')" class="h-12 rounded-2xl bg-violet-600"></button>
@@ -149,7 +208,7 @@
     </div>
 
     <!-- Картинка на кнопку -->
-    <div class="bg-gray-900 rounded-3xl p-6">
+    <div class="theme-card rounded-3xl p-6">
       <label class="block text-sm mb-3 text-gray-400">Картинка на главной кнопке</label>
       <input type="file" id="imageUpload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
       <button onclick="document.getElementById('imageUpload').click()" 
@@ -168,7 +227,7 @@
 <!-- Модальное окно -->
 <div id="modal" onclick="if(event.target === this) closeModal()" 
      class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-  <div class="bg-gray-900 rounded-3xl p-6 max-w-lg w-full max-h-[92vh] overflow-hidden relative" id="modalContent"></div>
+  <div class="theme-card rounded-3xl p-6 max-w-lg w-full max-h-[92vh] overflow-hidden relative" id="modalContent"></div>
 </div>
 
 <script>
@@ -284,7 +343,7 @@ function switchTab(tab) {
 function renderCalendarInStats() {
   const container = document.getElementById("calendarContainer");
   container.innerHTML = `
-    <div id="calendarInline" class="bg-gray-900 rounded-3xl p-6"></div>
+    <div id="calendarInline" class="theme-card rounded-3xl p-6"></div>
   `;
   renderInlineCalendar();
 }
@@ -330,11 +389,11 @@ function renderInlineCalendar() {
         const dayEl = document.createElement("div");
         let classList = `calendar-day rounded-2xl p-2 text-xs flex flex-col justify-between cursor-pointer`;
 
-        if (isToday) classList += " border-violet-400 ring-1 ring-violet-400";
+        if (isToday) classList += " today-day";
 
         if (record.isExtra) classList += " extra-day";
         else if (isWorking) classList += " working-day";
-        else classList += " bg-gray-900";
+        else classList += " theme-card";
 
         dayEl.className = classList;
 
@@ -380,7 +439,7 @@ function openCalendar() {
       <div class="grid grid-cols-7 gap-1" id="calendarGrid"></div>
 
       <div class="mt-6 text-xs flex flex-wrap gap-x-6 gap-y-2 justify-center">
-        <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 bg-gray-900 rounded"></span> Выходной</div>
+        <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 theme-card rounded"></span> Выходной</div>
         <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 bg-indigo-950 rounded border border-indigo-600"></span> Рабочий</div>
         <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 bg-violet-950 rounded border border-violet-500"></span> Доп день</div>
       </div>
@@ -406,14 +465,14 @@ function openCalendar() {
         const dayEl = document.createElement("div");
         let classList = `calendar-day rounded-2xl p-2 text-xs flex flex-col justify-between cursor-pointer`;
 
-        if (isToday) classList += " border-violet-400 ring-1 ring-violet-400";
+        if (isToday) classList += " today-day";
 
         if (record.isExtra) {
           classList += " extra-day";
         } else if (isWorking) {
           classList += " working-day";
         } else {
-          classList += " bg-gray-900";
+          classList += " theme-card";
         }
 
         dayEl.className = classList;
@@ -661,9 +720,15 @@ function render30DayChart() {
     targetLine.push(record.target);
 
     // Цвета в зависимости от выполнения
-    if (percent < 95) colors.push('#f87171');           // красный
-    else if (percent <= 110) colors.push('#4ade80');    // зелёный
-    else colors.push('#c084fc');                        // фиолетовый
+    const style = getComputedStyle(document.documentElement);
+
+    const badColor = style.getPropertyValue('--chart-bad');
+    const goodColor = style.getPropertyValue('--chart-good');
+    const midColor = style.getPropertyValue('--chart-mid');
+
+    if (percent < 95) colors.push(badColor);
+    else if (percent <= 110) colors.push(goodColor);
+    else colors.push(midColor);
   }
 
   chartInstance = new Chart(canvas, {
@@ -682,7 +747,8 @@ function render30DayChart() {
           label: 'План',
           data: targetLine,
           type: 'line',
-          borderColor: '#94a3b8',
+          borderColor: getComputedStyle(document.documentElement)
+            .getPropertyValue('--today-ring'),
           borderWidth: 2,
           borderDash: [5, 3],
           pointRadius: 0,
@@ -820,26 +886,127 @@ function calculateMonthPercent() {
 // ==================== КАСТОМИЗАЦИЯ ====================
 function saveTitle() {
   const newTitle = document.getElementById("customTitle").value.trim() || "Намусячено";
+
   document.getElementById("title").textContent = newTitle;
+
+  localStorage.setItem("appTitle", newTitle);
+
   alert("Название сохранено!");
 }
 
 function setTheme(theme) {
+
   const root = document.documentElement;
-  
-  if (theme === 'violet') {
-    root.style.setProperty('--accent', '#a5b4fc');
-  } else if (theme === 'emerald') {
-    root.style.setProperty('--accent', '#6ee7b7');
-  } else if (theme === 'amber') {
-    root.style.setProperty('--accent', '#fcd34d');
-  } else if (theme === 'rose') {
-    root.style.setProperty('--accent', '#fb7185');
-  } else if (theme === 'cyan') {
-    root.style.setProperty('--accent', '#67e8f9');
+
+  const themes = {
+
+    violet: {
+      bgMain: "#030712",
+      bgCard: "#111827",
+
+      accent: "#7c3aed",
+      accentHover: "#8b5cf6",
+
+      work: "#1E1B4B",
+      workBorder: "#6366f1",
+
+      extra: "#312e81",
+      extraBorder: "#a855f7"
+    },
+
+    emerald: {
+      bgMain: "#02120c",
+      bgCard: "#0f1f17",
+
+      accent: "#059669",
+      accentHover: "#10b981",
+
+      work: "#052e2b",
+      workBorder: "#34d399",
+
+      extra: "#064e3b",
+      extraBorder: "#6ee7b7"
+    },
+
+    amber: {
+      bgMain: "#140c02",
+      bgCard: "#211308",
+
+      accent: "#d97706",
+      accentHover: "#f59e0b",
+
+      work: "#3b2506",
+      workBorder: "#fbbf24",
+
+      extra: "#5b3a08",
+      extraBorder: "#fde68a"
+    },
+
+    rose: {
+      bgMain: "#1a1118",
+      bgCard: "#2a1722",
+
+      accent: "#f472b6",
+      accentHover: "#f9a8d4",
+
+      work: "#3a1d31",
+      workBorder: "#f9a8d4",
+
+      extra: "#4a223d",
+      extraBorder: "#f472b6",
+
+      sidebar: "#ec4899",
+      today: "#f9a8d4",
+
+      chartGood: "#f9a8d4",
+      chartMid: "#f472b6",
+      chartBad: "#fb7185"
+    },
+
+    cyan: {
+      bgMain: "#03131a",
+      bgCard: "#0b1f29",
+
+      accent: "#0891b2",
+      accentHover: "#22d3ee",
+
+      work: "#0b2940",
+      workBorder: "#38bdf8",
+
+      extra: "#123b59",
+      extraBorder: "#7dd3fc"
+    }
+  };
+
+  const t = themes[theme];
+
+  root.style.setProperty('--bg-main', t.bgMain);
+  root.style.setProperty('--bg-card', t.bgCard);
+
+  root.style.setProperty('--accent', t.accent);
+  root.style.setProperty('--accent-hover', t.accentHover);
+
+  root.style.setProperty('--calendar-work', t.work);
+  root.style.setProperty('--calendar-work-border', t.workBorder);
+
+  root.style.setProperty('--calendar-extra', t.extra);
+  root.style.setProperty('--calendar-extra-border', t.extraBorder);
+
+  root.style.setProperty('--sidebar-active', t.sidebar || t.accent);
+  root.style.setProperty('--today-ring', t.today || t.accent);
+
+  root.style.setProperty('--chart-good', t.chartGood || '#4ade80');
+  root.style.setProperty('--chart-mid', t.chartMid || t.accent);
+  root.style.setProperty('--chart-bad', t.chartBad || '#f87171');
+
+  localStorage.setItem('theme', theme);
+
+  applyTheme();
+
+  // Перерисовываем календарь
+  if (document.getElementById("calendarInline")) {
+    renderCalendarInStats();
   }
-  
-  alert(`Тема "${theme}" применена!`);
 }
 
 function handleImageUpload(e) {
@@ -856,6 +1023,54 @@ function handleImageUpload(e) {
   reader.readAsDataURL(file);
 }
 
+function applyTheme() {
+
+  // Фон страницы
+  document.getElementById("appBody").style.backgroundColor =
+    getComputedStyle(document.documentElement).getPropertyValue('--bg-main');
+
+  // Заголовок
+  const title = document.getElementById("title");
+
+  // Процент месяца
+  const monthPercent = document.getElementById("monthPercent");
+
+  if (monthPercent) {
+    monthPercent.style.color =
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--accent');
+  }
+
+  if (title) {
+    title.style.color =
+      getComputedStyle(document.documentElement).getPropertyValue('--accent');
+  }
+
+  // Прогресс
+  const progress = document.getElementById("progress");
+
+  if (progress) {
+    progress.style.backgroundColor =
+      getComputedStyle(document.documentElement).getPropertyValue('--accent');
+  }
+}
+
+// Загрузка названия
+const savedTitle = localStorage.getItem("appTitle");
+
+if (savedTitle) {
+  document.getElementById("title").textContent = savedTitle;
+  document.getElementById("customTitle").value = savedTitle;
+}
+
+// Загрузка темы
+const savedTheme = localStorage.getItem("theme");
+
+if (savedTheme) {
+  setTheme(savedTheme);
+} else {
+  applyTheme();
+}
 
 // Запуск
 initDB();
