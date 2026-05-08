@@ -434,27 +434,39 @@
 </div>
 
 <!-- Основной контент -->
-<div class="flex-1 p-6 max-w-4xl">
+<div class="flex flex-1">
+  <!-- ЛЕВАЯ ЧАСТЬ -->
+  <div class="flex-1 p-6 max-w-4xl">
+    <!-- TAB 0: Сегодня -->
+    <div id="tabContent0">
+      <div class="theme-card rounded-3xl p-8 text-center shadow-xl mb-8">
+        <div class="text-7xl font-bold mb-2" id="count">0</div>
+        <div class="text-gray-400 text-sm mb-6">из <span id="targetDisplay" class="cursor-pointer underline" onclick="editTarget()">25</span></div>
+        
+        <button id="mainButton" onclick="increment()" class="big-button theme-button w-full text-white text-4xl font-bold py-12 rounded-2xl mb-8 shadow-lg">
+          +1 НАМУСЯЧЕНО
+        </button>
 
-  <!-- TAB 0: Сегодня -->
-  <div id="tabContent0">
-    <div class="theme-card rounded-3xl p-8 text-center shadow-xl mb-8">
-      <div class="text-7xl font-bold mb-2" id="count">0</div>
-      <div class="text-gray-400 text-sm mb-6">из <span id="targetDisplay" class="cursor-pointer underline" onclick="editTarget()">25</span></div>
-      
-      <button id="mainButton" onclick="increment()" class="big-button theme-button w-full text-white text-4xl font-bold py-12 rounded-2xl mb-8 shadow-lg">
-        +1 НАМУСЯЧЕНО
-      </button>
+        <div class="w-full bg-gray-800 h-4 rounded-full overflow-hidden">
+          <div id="progress" class="h-full w-0 transition-all"></div>
+        </div>
+        <div class="flex justify-between text-sm mt-2 text-gray-400">
+          <div id="percent">0%</div>
+        </div>
+      </div>
 
-      <div class="w-full bg-gray-800 h-4 rounded-full overflow-hidden">
-        <div id="progress" class="h-full w-0 transition-all"></div>
-      </div>
-      <div class="flex justify-between text-sm mt-2 text-gray-400">
-        <div id="percent">0%</div>
-      </div>
+      <button onclick="finishDay()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-medium">Закончить день</button>
+    </div>
     </div>
 
-    <button onclick="finishDay()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-medium">Закончить день</button>
+  <!-- ПРАВАЯ ЗОНА МЕМОВ -->
+  <div class="w-80 border-l border-gray-800 p-4 relative">
+
+    <div id="dropZone"
+        class="h-full rounded-2xl border-2 border-dashed border-gray-700 flex items-center justify-center text-gray-500 text-sm">
+      мемы тута
+    </div>
+
   </div>
 
   <!-- TAB 1: Статистика + Календарь -->
@@ -1467,6 +1479,81 @@ function resetButtonImage() {
     "Картинка сброшена";
 
   alert("Картинка удалена, glow восстановлен");
+}
+
+const dropZone = document.getElementById("dropZone");
+
+dropZone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropZone.classList.add("border-violet-400");
+});
+
+dropZone.addEventListener("dragleave", () => {
+  dropZone.classList.remove("border-violet-400");
+});
+
+dropZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("border-violet-400");
+
+  const files = e.dataTransfer.files;
+
+  for (const file of files) {
+    if (!file.type.startsWith("image")) continue;
+
+    const reader = new FileReader();
+
+    reader.onload = function(ev) {
+      createSticker(ev.target.result);
+    };
+
+    reader.readAsDataURL(file);
+  }
+});
+
+function createSticker(src) {
+  const img = document.createElement("img");
+
+  img.src = src;
+  img.className = "absolute w-28 rounded-xl shadow-2xl cursor-move select-none";
+
+  // случайная позиция
+  img.style.left = Math.random() * 200 + "px";
+  img.style.top = Math.random() * 300 + "px";
+  img.style.zIndex = 50;
+
+  makeDraggable(img);
+
+  img.ondblclick = () => img.remove();
+
+  dropZone.appendChild(img);
+}
+
+function makeDraggable(el) {
+  let offsetX = 0;
+  let offsetY = 0;
+  let isDown = false;
+
+  el.addEventListener("mousedown", (e) => {
+    isDown = true;
+    offsetX = e.offsetX;
+    offsetY = e.offsetY;
+    el.style.zIndex = 999;
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isDown) return;
+
+    const parentRect = dropZone.getBoundingClientRect();
+
+    el.style.position = "absolute";
+    el.style.left = (e.clientX - parentRect.left - offsetX) + "px";
+    el.style.top = (e.clientY - parentRect.top - offsetY) + "px";
+  });
+
+  document.addEventListener("mouseup", () => {
+    isDown = false;
+  });
 }
 
 // Запуск
