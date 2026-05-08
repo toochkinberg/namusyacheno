@@ -125,8 +125,8 @@
     }
 
     .today-day {
-      border-color: var(--today-ring) !important;
-      box-shadow: 0 0 0 1px var(--today-ring);
+      border: 2px solid var(--accent) !important;
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
     }
 
     #mainButton {
@@ -710,7 +710,8 @@ function renderInlineCalendar() {
         const record = records[dateStr] || { count: 0, target: dailyTarget, isExtra: false };
         
         const isWorking = isWorkingDay(dateStr);
-        const isToday = dateStr === getTodayStr();
+        const today = getTodayStr();
+        const isToday = dateStr === today;
 
         const dayEl = document.createElement("div");
         let classList = `calendar-day rounded-2xl p-2 text-xs flex flex-col justify-between cursor-pointer`;
@@ -739,6 +740,8 @@ function renderInlineCalendar() {
 
   window.prevInlineMonth = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } render(); };
   window.nextInlineMonth = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } render(); };
+
+  const today = getTodayStr();
 
   render();
 }
@@ -786,7 +789,8 @@ function openCalendar() {
         const record = records[dateStr] || { count: 0, target: dailyTarget, isExtra: false };
         
         const isWorking = isWorkingDay(dateStr);
-        const isToday = dateStr === getTodayStr();
+        const today = getTodayStr();
+        const isToday = dateStr === today;
 
         const dayEl = document.createElement("div");
         let classList = `calendar-day rounded-2xl p-2 text-xs flex flex-col justify-between cursor-pointer`;
@@ -1467,6 +1471,16 @@ function resetButtonImage() {
     "Картинка сброшена";
 
   alert("Картинка удалена, glow восстановлен");
+}
+
+function getTodayStr() {
+  const d = new Date();
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 // Запуск
