@@ -129,6 +129,35 @@
       box-shadow: 0 0 0 1px var(--today-ring);
     }
 
+    #mainButton {
+      position: relative;
+      overflow: hidden;
+
+      /* БАЗА КНОПКИ */
+      box-shadow: 0 0 25px color-mix(in srgb, var(--accent) 35%, transparent);
+      transition: all 0.2s ease;
+    }
+
+    #mainButton::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+
+      background:
+        linear-gradient(
+          to bottom,
+          color-mix(in srgb, var(--accent) 35%, transparent),
+          rgba(0,0,0,0.45)
+        );
+
+      z-index: 0;
+    }
+
+    #mainButton > * {
+      position: relative;
+      z-index: 1;
+    }
+
     /* ================= BLOBS ================= */
 
     .blob-container {
@@ -346,6 +375,13 @@
         top 0.12s linear;
     }
 
+    #mainButton:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 0 35px color-mix(in srgb, var(--accent) 50%, transparent),
+        0 15px 40px rgba(0,0,0,0.35);
+    }
+
     @keyframes gradientShift {
 
       0% {
@@ -500,6 +536,10 @@
       <button onclick="document.getElementById('imageUpload').click()" 
               class="w-full bg-gray-800 hover:bg-gray-700 py-4 rounded-2xl">
         Загрузить свою картинку
+      </button>
+      <button onclick="resetButtonImage()" 
+              class="w-full mt-3 bg-red-600 hover:bg-red-500 py-4 rounded-2xl">
+        Сбросить картинку
       </button>
       <div id="currentImagePreview" class="mt-4 text-sm text-gray-400"></div>
     </div>
@@ -1300,12 +1340,18 @@ function handleImageUpload(e) {
   if (!file) return;
 
   const reader = new FileReader();
+
   reader.onload = function(ev) {
-    localStorage.setItem('buttonImage', ev.target.result);
-    document.getElementById("currentImagePreview").innerHTML = 
+    const img = ev.target.result;
+
+    localStorage.setItem('buttonImage', img);
+
+    document.getElementById("currentImagePreview").innerHTML =
       `✓ Изображение загружено (${file.name})`;
-    alert("Изображение сохранено! (Пока отображается только в превью)");
+
+    applyButtonImage();
   };
+
   reader.readAsDataURL(file);
 }
 
@@ -1365,9 +1411,68 @@ document.addEventListener("mousemove", (e) => {
   mouseGlow.style.top = e.clientY + "px";
 });
 
+function applyButtonImage() {
+  const btn = document.getElementById("mainButton");
+
+  if (btn) {
+    btn.classList.add("theme-button");
+  };
+
+  const img = localStorage.getItem("buttonImage");
+
+  if (!btn) return;
+
+  if (img) {
+    btn.style.backgroundImage = `url(${img})`;
+    btn.style.backgroundSize = "cover";
+    btn.style.backgroundPosition = "center";
+
+    // Делаем кнопку более "живой"
+    btn.style.filter = "saturate(1.1) contrast(1.05)";
+    btn.style.boxShadow =
+      "0 0 30px color-mix(in srgb, var(--accent) 45%, transparent)";
+
+  } else {
+    btn.style.backgroundImage = "";
+
+    // возвращаем нормальный вид
+    btn.style.filter = "";
+    btn.style.boxShadow =
+      "0 0 25px color-mix(in srgb, var(--accent) 35%, transparent)";
+  }
+}
+
+function resetButtonImage() {
+  localStorage.removeItem("buttonImage");
+
+  const btn = document.getElementById("mainButton");
+
+  if (btn) {
+    // убираем только картинку
+    btn.style.backgroundImage = "";
+    btn.style.backgroundSize = "";
+    btn.style.backgroundPosition = "";
+
+    // ВАЖНО: возвращаем glow через theme
+    btn.classList.add("theme-button");
+
+    // принудительно обновляем цвет (чтобы не потерялся after image mode)
+    const accent = getComputedStyle(document.documentElement)
+      .getPropertyValue('--accent');
+
+    btn.style.backgroundColor = accent;
+  }
+
+  document.getElementById("currentImagePreview").innerHTML =
+    "Картинка сброшена";
+
+  alert("Картинка удалена, glow восстановлен");
+}
+
 // Запуск
 initDB();
 switchTab(0);
+applyButtonImage();
 </script>
 </body>
 </html>
