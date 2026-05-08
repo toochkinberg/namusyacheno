@@ -44,8 +44,11 @@
   <button onclick="switchTab(0)" class="sidebar-btn active flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 w-full text-left" id="tab0">
     <i class="fas fa-home"></i> Сегодня
   </button>
-  <button onclick="switchTab(1)" class="sidebar-btn flex items-center gap-3 px-4 py-3 rounded-2xl w-full text-left" id="tab1">
+  <button onclick="switchTab(1)" class="sidebar-btn flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 w-full text-left" id="tab1">
     <i class="fas fa-chart-bar"></i> Статистика
+  </button>
+  <button onclick="switchTab(2)" class="sidebar-btn flex items-center gap-3 px-4 py-3 rounded-2xl w-full text-left" id="tab2">
+    <i class="fas fa-cog"></i> Настройки
   </button>
 </div>
 
@@ -119,6 +122,48 @@
     </div>
   </div>
 </div>
+
+  <!-- TAB 2: Настройки -->
+  <div id="tabContent2" class="hidden space-y-8">
+    <h2 class="text-2xl font-bold">Настройки</h2>
+
+    <!-- Название -->
+    <div class="bg-gray-900 rounded-3xl p-6">
+      <label class="block text-sm mb-2 text-gray-400">Название счётчика</label>
+      <input id="customTitle" value="Намусячено" 
+             class="w-full bg-gray-800 p-4 rounded-2xl text-lg">
+      <button onclick="saveTitle()" 
+              class="mt-4 w-full bg-violet-600 py-3 rounded-2xl">Сохранить название</button>
+    </div>
+
+    <!-- Темы -->
+    <div class="bg-gray-900 rounded-3xl p-6">
+      <label class="block text-sm mb-3 text-gray-400">Цветовая тема</label>
+      <div class="grid grid-cols-5 gap-3">
+        <button onclick="setTheme('violet')" class="h-12 rounded-2xl bg-violet-600"></button>
+        <button onclick="setTheme('emerald')" class="h-12 rounded-2xl bg-emerald-600"></button>
+        <button onclick="setTheme('amber')" class="h-12 rounded-2xl bg-amber-600"></button>
+        <button onclick="setTheme('rose')" class="h-12 rounded-2xl bg-rose-600"></button>
+        <button onclick="setTheme('cyan')" class="h-12 rounded-2xl bg-cyan-600"></button>
+      </div>
+    </div>
+
+    <!-- Картинка на кнопку -->
+    <div class="bg-gray-900 rounded-3xl p-6">
+      <label class="block text-sm mb-3 text-gray-400">Картинка на главной кнопке</label>
+      <input type="file" id="imageUpload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+      <button onclick="document.getElementById('imageUpload').click()" 
+              class="w-full bg-gray-800 hover:bg-gray-700 py-4 rounded-2xl">
+        Загрузить свою картинку
+      </button>
+      <div id="currentImagePreview" class="mt-4 text-sm text-gray-400"></div>
+    </div>
+
+    <div class="flex gap-4">
+      <button onclick="exportData()" class="flex-1 bg-gray-700 py-4 rounded-2xl">Экспорт данных</button>
+      <button onclick="importData()" class="flex-1 bg-gray-700 py-4 rounded-2xl">Импорт данных</button>
+    </div>
+  </div>
 
 <!-- Модальное окно -->
 <div id="modal" onclick="if(event.target === this) closeModal()" 
@@ -225,12 +270,13 @@ function switchTab(tab) {
 
   document.getElementById('tabContent0').classList.add('hidden');
   document.getElementById('tabContent1').classList.add('hidden');
+  document.getElementById('tabContent2').classList.add('hidden');
 
   document.getElementById(`tabContent${tab}`).classList.remove('hidden');
 
   if (tab === 1) {
     loadStatistics();
-    renderCalendarInStats();     // ← вызываем встроенный календарь
+    renderCalendarInStats();
   }
 }
 
@@ -771,8 +817,49 @@ function calculateMonthPercent() {
     `<span class="text-gray-500">(${workingDaysPassed}/${workingDaysTotal} рабочих дней)</span>`;
 }
 
+// ==================== КАСТОМИЗАЦИЯ ====================
+function saveTitle() {
+  const newTitle = document.getElementById("customTitle").value.trim() || "Намусячено";
+  document.getElementById("title").textContent = newTitle;
+  alert("Название сохранено!");
+}
+
+function setTheme(theme) {
+  const root = document.documentElement;
+  
+  if (theme === 'violet') {
+    root.style.setProperty('--accent', '#a5b4fc');
+  } else if (theme === 'emerald') {
+    root.style.setProperty('--accent', '#6ee7b7');
+  } else if (theme === 'amber') {
+    root.style.setProperty('--accent', '#fcd34d');
+  } else if (theme === 'rose') {
+    root.style.setProperty('--accent', '#fb7185');
+  } else if (theme === 'cyan') {
+    root.style.setProperty('--accent', '#67e8f9');
+  }
+  
+  alert(`Тема "${theme}" применена!`);
+}
+
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    localStorage.setItem('buttonImage', ev.target.result);
+    document.getElementById("currentImagePreview").innerHTML = 
+      `✓ Изображение загружено (${file.name})`;
+    alert("Изображение сохранено! (Пока отображается только в превью)");
+  };
+  reader.readAsDataURL(file);
+}
+
+
 // Запуск
 initDB();
+switchTab(0);
 </script>
 </body>
 </html>
