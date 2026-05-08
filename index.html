@@ -46,7 +46,15 @@
       transition: all 0.2s;
       border: 2px solid transparent;
     }
-    .calendar-day:hover { background-color: #374151 !important; }
+        
+    .calendar-day:hover {
+      background-color: #374151 !important;
+      transform: translateY(-1px);
+    }
+
+    .today-day:hover {
+      animation-play-state: paused;
+    } 
 
     .working-day { 
       background-color: var(--calendar-work) !important; 
@@ -126,7 +134,8 @@
 
     .today-day {
       border: 2px solid var(--accent) !important;
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+      animation: todayPulse 2.2s ease-in-out infinite;
+      position: relative;
     }
 
     #mainButton {
@@ -394,6 +403,25 @@
 
       100% {
         transform: scale(1) rotate(0deg);
+      }
+    }
+
+    @keyframes todayPulse {
+      0% {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+        transform: scale(1);
+      }
+
+      50% {
+        box-shadow:
+          0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent),
+          0 0 18px color-mix(in srgb, var(--accent) 20%, transparent);
+        transform: scale(1.02);
+      }
+
+      100% {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+        transform: scale(1);
       }
     }
   </style>
