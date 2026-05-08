@@ -64,9 +64,15 @@
     }
 
     .theme-card {
-      background-color: var(--bg-card) !important;
-      box-shadow: 0 0 20px rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.04);
+      background: color-mix(in srgb, var(--bg-card) 82%, transparent) !important;
+
+      backdrop-filter: blur(18px);
+
+      border: 1px solid rgba(255,255,255,0.05);
+
+      box-shadow:
+        0 10px 30px rgba(0,0,0,0.25),
+        inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
     .theme-button {
@@ -92,9 +98,100 @@
       border-color: var(--today-ring) !important;
       box-shadow: 0 0 0 1px var(--today-ring);
     }
+
+    /* ================= BLOBS ================= */
+
+    .blob-container {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: -1;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 9999px;
+      filter: blur(90px);
+      opacity: 0.22;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+    }
+
+    /* Blob colors берутся из темы */
+    .blob1 {
+      width: 420px;
+      height: 420px;
+      background: var(--accent);
+      top: -120px;
+      left: -120px;
+      animation: floatBlob1 18s infinite;
+    }
+
+    .blob2 {
+      width: 360px;
+      height: 360px;
+      background: var(--calendar-extra-border);
+      bottom: -100px;
+      right: -80px;
+      animation: floatBlob2 22s infinite;
+    }
+
+    .blob3 {
+      width: 280px;
+      height: 280px;
+      background: var(--calendar-work-border);
+      top: 45%;
+      left: 55%;
+      animation: floatBlob3 26s infinite;
+    }
+
+    /* Анимации */
+
+    @keyframes floatBlob1 {
+      0% {
+        transform: translate(0px, 0px) scale(1);
+      }
+      50% {
+        transform: translate(80px, 40px) scale(1.15);
+      }
+      100% {
+        transform: translate(0px, 0px) scale(1);
+      }
+    }
+
+    @keyframes floatBlob2 {
+      0% {
+        transform: translate(0px, 0px) scale(1);
+      }
+      50% {
+        transform: translate(-60px, -50px) scale(1.2);
+      }
+      100% {
+        transform: translate(0px, 0px) scale(1);
+      }
+    }
+
+    @keyframes floatBlob3 {
+      0% {
+        transform: translate(0px, 0px) scale(1);
+      }
+      50% {
+        transform: translate(30px, -60px) scale(1.1);
+      }
+      100% {
+        transform: translate(0px, 0px) scale(1);
+      }
+    }
   </style>
 </head>
 <body id="appBody" class="text-gray-100 min-h-screen flex">
+
+<!-- Animated background blobs -->
+<div class="blob-container pointer-events-none">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
 
 <!-- Сайдбар -->
 <div class="w-52 theme-card border-r border-gray-700 min-h-screen p-4 flex flex-col">
