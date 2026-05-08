@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Намусячено</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .big-button { transition: all 0.1s ease; }
+    .big-button:active { transform: scale(0.95); }
+    
+    .calendar-day {
+      height: 68px;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .calendar-day:hover { background-color: #374151 !important; }
+
+    .working-day { 
+      background-color: #1E1B4B !important; 
+      border-color: #6366f1 !important;
+    }
+    .extra-day { 
+      background-color: #312e81 !important; 
+      border-color: #a855f7 !important;
+    }
+
+    /* Сайдбар */
+    .sidebar-btn.active {
+      background-color: #4f46e5;
+      color: white;
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex">
+
+<!-- Сайдбар -->
+<div class="w-52 bg-gray-900 border-r border-gray-700 min-h-screen p-4 flex flex-col">
+  <h1 class="text-2xl font-bold text-violet-400 mb-10 px-4">Намусячено</h1>
+  
+  <button onclick="switchTab(0)" class="sidebar-btn active flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 w-full text-left" id="tab0">
+    <i class="fas fa-home"></i> Сегодня
+  </button>
+  <button onclick="switchTab(1)" class="sidebar-btn flex items-center gap-3 px-4 py-3 rounded-2xl w-full text-left" id="tab1">
+    <i class="fas fa-chart-bar"></i> Статистика
+  </button>
+</div>
+
+<!-- Основной контент -->
+<div class="flex-1 p-6 max-w-4xl">
+
+  <!-- TAB 0: Сегодня -->
+  <div id="tabContent0">
+    <div class="bg-gray-900 rounded-3xl p-8 text-center shadow-xl mb-8">
+      <div class="text-7xl font-bold mb-2" id="count">0</div>
+      <div class="text-gray-400 text-sm mb-6">из <span id="targetDisplay" class="cursor-pointer underline" onclick="editTarget()">25</span></div>
+      
+      <button onclick="increment()" class="big-button w-full bg-violet-600 hover:bg-violet-500 text-white text-4xl font-bold py-12 rounded-2xl mb-8 shadow-lg">
+        +1 НАМУСЯЧЕНО
+      </button>
+
+      <div class="w-full bg-gray-800 h-4 rounded-full overflow-hidden">
+        <div id="progress" class="h-full bg-violet-500 w-0 transition-all"></div>
+      </div>
+      <div class="flex justify-between text-sm mt-2 text-gray-400">
+        <div id="percent">0%</div>
+      </div>
+    </div>
+
+    <button onclick="finishDay()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-medium">Закончить день</button>
+  </div>
+
+  <!-- TAB 1: Статистика + Календарь -->
+  <div id="tabContent1" class="hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Левая колонка - Дашборд -->
+      <div class="space-y-6">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-gray-900 rounded-3xl p-6">
+            <div class="text-gray-400">Всего намусячено</div>
+            <div id="totalCount" class="text-5xl font-bold mt-3">0</div>
+          </div>
+          <div class="bg-gray-900 rounded-3xl p-6">
+            <div class="text-gray-400">Среднее в день</div>
+            <div id="avgPerDay" class="text-5xl font-bold mt-3">0</div>
+          </div>
+        </div>
+
+        <!-- Новый блок: % выполнения за текущий месяц -->
+        <div class="bg-gray-900 rounded-3xl p-6">
+          <div class="text-gray-400 mb-1">Выполнение плана за текущий месяц</div>
+          <div id="monthPercent" class="text-6xl font-bold text-violet-400">0%</div>
+          <div id="monthInfo" class="text-sm text-gray-400"></div>
+        </div>
+
+        <button onclick="setMonthlyPlan()" 
+                class="w-full bg-violet-600 hover:bg-violet-500 py-4 rounded-2xl font-medium flex items-center justify-center gap-2">
+          <i class="fas fa-calendar-plus"></i>
+          Установить план на месяц
+        </button>
+
+        <div class="bg-gray-900 rounded-3xl p-6">
+          <p class="text-gray-400 mb-4">За последние 30 дней</p>
+          <div class="h-64">
+            <canvas id="chart30"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Правая колонка - Календарь -->
+      <div>
+        <h2 class="text-xl font-bold mb-4">Календарь</h2>
+        <div id="calendarContainer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно -->
+<div id="modal" onclick="if(event.target === this) closeModal()" 
+     class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+  <div class="bg-gray-900 rounded-3xl p-6 max-w-lg w-full max-h-[92vh] overflow-hidden relative" id="modalContent"></div>
+</div>
+
+<script>
+// ==================== ПЕРЕМЕННЫЕ ====================
+let currentCount = 0;
+let dailyTarget = 25;
+let firstWorkingDay = "2026-04-28";
+let records = {};
+let currentTab = 0;
+let chartInstance = null;
+
+const DB_NAME = "NamusyachenoDB";
+const STORE_NAME = "records";
+let db;
+
+// ==================== БД ====================
+function initDB() {
+  const request = indexedDB.open(DB_NAME, 7);
+  request.onupgradeneeded = (e) => {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+  };
+  request.onsuccess = (e) => {
+    db = e.target.result;
+    loadAllRecords(() => loadToday());
+  };
+}
+
+function getTodayStr() { return new Date().toISOString().split('T')[0]; }
+
+function loadAllRecords(callback) {
+  records = {};
+  const tx = db.transaction(STORE_NAME, "readonly");
+  const store = tx.objectStore(STORE_NAME);
+  store.openCursor().onsuccess = (e) => {
+    const cursor = e.target.result;
+    if (cursor) {
+      if (cursor.key === "settings") {
+        firstWorkingDay = cursor.value.firstWorkingDay || firstWorkingDay;
+      } else {
+        records[cursor.key] = cursor.value;
+      }
+      cursor.continue();
+    } else if (callback) callback();
+  };
+}
+
+function isWorkingDay(dateStr) {
+  const start = new Date(firstWorkingDay);
+  const current = new Date(dateStr);
+  const diffDays = Math.floor((current - start) / (1000*60*60*24));
+  if (diffDays < 0) return false;
+  return (diffDays % 4 === 0) || (diffDays % 4 === 1);
+}
+
+// ==================== Основные функции ====================
+function loadToday() {
+  const today = getTodayStr();
+  const r = records[today];
+  currentCount = r ? r.count || 0 : 0;
+  dailyTarget = r ? r.target || dailyTarget : dailyTarget;
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById("count").textContent = currentCount;
+  document.getElementById("targetDisplay").textContent = dailyTarget;
+  const percent = dailyTarget > 0 ? Math.floor((currentCount / dailyTarget) * 100) : 0;
+  document.getElementById("percent").textContent = percent + "%";
+  document.getElementById("progress").style.width = percent + "%";
+}
+
+function increment() {
+  currentCount++;
+  saveToday();
+  updateUI();
+  const el = document.getElementById("count");
+  el.style.transform = "scale(1.15)";
+  setTimeout(() => el.style.transform = "scale(1)", 150);
+}
+
+function saveToday() {
+  const today = getTodayStr();
+  records[today] = records[today] || {};
+  records[today].count = currentCount;
+  records[today].target = dailyTarget;
+  if (records[today].isExtra === undefined) records[today].isExtra = false;
+
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  tx.objectStore(STORE_NAME).put(records[today], today);
+}
+
+// ==================== ТАБЫ ====================
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.sidebar-btn').forEach((el, i) => {
+    el.classList.toggle('active', i === tab);
+  });
+
+  document.getElementById('tabContent0').classList.add('hidden');
+  document.getElementById('tabContent1').classList.add('hidden');
+
+  document.getElementById(`tabContent${tab}`).classList.remove('hidden');
+
+  if (tab === 1) {
+    loadStatistics();
+    renderCalendarInStats();     // ← вызываем встроенный календарь
+  }
+}
+
+// Календарь внутри статистики (встроенный)
+function renderCalendarInStats() {
+  const container = document.getElementById("calendarContainer");
+  container.innerHTML = `
+    <div id="calendarInline" class="bg-gray-900 rounded-3xl p-6"></div>
+  `;
+  renderInlineCalendar();
+}
+
+function renderInlineCalendar() {
+  let currentMonth = new Date().getMonth();
+  let currentYear = new Date().getFullYear();
+
+  function render() {
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    let html = `
+      <div class="flex justify-between items-center mb-6">
+        <button onclick="prevInlineMonth()" class="text-3xl px-4 hover:text-violet-400">‹</button>
+        <div class="text-xl font-bold">${new Date(currentYear, currentMonth).toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}</div>
+        <button onclick="nextInlineMonth()" class="text-3xl px-4 hover:text-violet-400">›</button>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1 text-center text-sm mb-3 text-gray-400">
+        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div class="text-emerald-400">Сб</div><div class="text-emerald-400">Вс</div>
+      </div>
+      <div class="grid grid-cols-7 gap-1" id="inlineCalendarGrid"></div>
+    `;
+
+    document.getElementById("calendarInline").innerHTML = html;
+
+    setTimeout(() => {
+      const grid = document.getElementById("inlineCalendarGrid");
+      grid.innerHTML = "";
+
+      for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) {
+        grid.appendChild(document.createElement("div"));
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const record = records[dateStr] || { count: 0, target: dailyTarget, isExtra: false };
+        
+        const isWorking = isWorkingDay(dateStr);
+        const isToday = dateStr === getTodayStr();
+
+        const dayEl = document.createElement("div");
+        let classList = `calendar-day rounded-2xl p-2 text-xs flex flex-col justify-between cursor-pointer`;
+
+        if (isToday) classList += " border-violet-400 ring-1 ring-violet-400";
+
+        if (record.isExtra) classList += " extra-day";
+        else if (isWorking) classList += " working-day";
+        else classList += " bg-gray-900";
+
+        dayEl.className = classList;
+
+        dayEl.innerHTML = `
+          <div class="font-medium">${day}</div>
+          <div class="text-center">
+            <div class="font-bold text-lg">${record.count}</div>
+            <div class="text-[10px] opacity-75">${record.target ? Math.round(record.count / record.target * 100) : 0}%</div>
+          </div>
+        `;
+
+        dayEl.onclick = () => openDayDetail(dateStr);
+        grid.appendChild(dayEl);
+      }
+    }, 10);
+  }
+
+  window.prevInlineMonth = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } render(); };
+  window.nextInlineMonth = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } render(); };
+
+  render();
+}
+
+// ==================== КАЛЕНДАРЬ ====================
+function openCalendar() {
+  let currentMonth = new Date().getMonth();
+  let currentYear = new Date().getFullYear();
+
+  function renderCalendar() {
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    let html = `
+      <div class="flex justify-between items-center mb-6">
+        <button onclick="prevMonth()" class="text-3xl px-6 py-2 hover:text-violet-400 transition-colors">‹</button>
+        <div class="text-2xl font-bold">${new Date(currentYear, currentMonth).toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}</div>
+        <button onclick="nextMonth()" class="text-3xl px-6 py-2 hover:text-violet-400 transition-colors">›</button>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1 text-center text-sm mb-3 text-gray-400">
+        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div class="text-emerald-400">Сб</div><div class="text-emerald-400">Вс</div>
+      </div>
+      <div class="grid grid-cols-7 gap-1" id="calendarGrid"></div>
+
+      <div class="mt-6 text-xs flex flex-wrap gap-x-6 gap-y-2 justify-center">
+        <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 bg-gray-900 rounded"></span> Выходной</div>
+        <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 bg-indigo-950 rounded border border-indigo-600"></span> Рабочий</div>
+        <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 bg-violet-950 rounded border border-violet-500"></span> Доп день</div>
+      </div>
+    `;
+
+    showModal(html);
+
+    setTimeout(() => {
+      const grid = document.getElementById("calendarGrid");
+      grid.innerHTML = "";
+
+      for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) {
+        grid.appendChild(document.createElement("div"));
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const record = records[dateStr] || { count: 0, target: dailyTarget, isExtra: false };
+        
+        const isWorking = isWorkingDay(dateStr);
+        const isToday = dateStr === getTodayStr();
+
+        const dayEl = document.createElement("div");
+        let classList = `calendar-day rounded-2xl p-2 text-xs flex flex-col justify-between cursor-pointer`;
+
+        if (isToday) classList += " border-violet-400 ring-1 ring-violet-400";
+
+        if (record.isExtra) {
+          classList += " extra-day";
+        } else if (isWorking) {
+          classList += " working-day";
+        } else {
+          classList += " bg-gray-900";
+        }
+
+        dayEl.className = classList;
+
+        dayEl.innerHTML = `
+          <div class="font-medium">${day}</div>
+          <div class="text-center">
+            <div class="font-bold text-lg">${record.count}</div>
+            <div class="text-[10px] opacity-75">${record.target ? Math.round(record.count / record.target * 100) : 0}%</div>
+          </div>
+        `;
+
+        dayEl.onclick = () => openDayDetail(dateStr);
+        grid.appendChild(dayEl);
+      }
+    }, 50);
+  }
+
+  // Глобальные функции для кнопок (исправлено)
+  window.prevMonth = function() {
+    currentMonth--;
+    if (currentMonth < 0) {
+      currentMonth = 11;
+      currentYear--;
+    }
+    renderCalendar();
+  };
+
+  window.nextMonth = function() {
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+    renderCalendar();
+  };
+
+  renderCalendar();
+}
+
+// ==================== Детали дня и модалки ====================
+function openDayDetail(dateStr) {
+  let record = records[dateStr];
+  
+  // Защита от undefined
+  if (!record) {
+    record = { count: 0, target: dailyTarget, isExtra: false };
+  }
+  if (record.target === undefined) record.target = dailyTarget;
+  if (record.count === undefined) record.count = 0;
+
+  const html = `
+    <h2 class="text-2xl font-bold mb-6">${dateStr}</h2>
+    <div class="space-y-6">
+      <div>
+        <label class="block text-sm mb-2">Намусячено</label>
+        <input type="number" id="dayCount" value="${record.count}" class="w-full bg-gray-800 p-5 rounded-2xl text-4xl font-bold">
+      </div>
+      <div>
+        <label class="block text-sm mb-2">Цель на день</label>
+        <input type="number" id="dayTarget" value="${record.target}" class="w-full bg-gray-800 p-5 rounded-2xl text-4xl font-bold">
+      </div>
+      <label class="flex items-center gap-3 text-sm">
+        <input type="checkbox" id="isExtra" ${record.isExtra ? 'checked' : ''}>
+        <span>Дополнительный рабочий день (доп)</span>
+      </label>
+
+      <div class="flex gap-3 pt-6">
+        <button onclick="saveDay('${dateStr}')" class="flex-1 bg-violet-600 py-4 rounded-2xl font-medium">Сохранить</button>
+        <button onclick="closeModal()" class="flex-1 bg-gray-700 py-4 rounded-2xl font-medium">Отмена</button>
+      </div>
+    </div>
+  `;
+  showModal(html);
+}
+
+function saveDay(dateStr) {
+  const count = parseInt(document.getElementById("dayCount").value) || 0;
+  const target = parseInt(document.getElementById("dayTarget").value) || dailyTarget;
+  let isExtra = document.getElementById("isExtra").checked;
+
+  const isWorking = isWorkingDay(dateStr);
+  
+  if (!isWorking && count > 0 && !isExtra) {
+    isExtra = true;
+  }
+
+  records[dateStr] = { count, target, isExtra };
+
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  tx.objectStore(STORE_NAME).put({ count, target, isExtra }, dateStr);
+
+  closeModal();
+  // Обновляем календарь, если он открыт
+  if (document.getElementById("calendarInline")) renderCalendarInStats();
+}
+
+function showModal(html) {
+  const content = document.getElementById("modalContent");
+  content.innerHTML = html;
+
+  // Крестик
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "×";
+  closeBtn.className = "absolute top-4 right-4 text-4xl text-gray-400 hover:text-white leading-none z-10";
+  closeBtn.onclick = closeModal;
+  content.appendChild(closeBtn);
+
+  document.getElementById("modal").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.add("hidden");
+}
+
+// ==================== Остальные функции ====================
+function editTarget() {
+  const val = prompt("Новая цель на сегодня:", dailyTarget);
+  if (val && !isNaN(val)) {
+    dailyTarget = parseInt(val);
+    saveToday();
+    updateUI();
+  }
+}
+
+function finishDay() {
+  if (confirm("Закончить день?")) {
+    saveToday();
+    alert("День зафиксирован!");
+  }
+}
+
+function showSettings() {
+  const html = `
+    <h2 class="text-xl font-bold mb-6">Настройки</h2>
+    <div class="space-y-6">
+      <div>
+        <label class="block text-sm mb-2">Название счётчика</label>
+        <input id="titleInput" value="${document.getElementById('title').textContent}" class="w-full bg-gray-800 p-4 rounded-2xl">
+      </div>
+      <div>
+        <label class="block text-sm mb-2">Первый рабочий день (начало цикла 2/2)</label>
+        <input type="date" id="firstDayInput" value="${firstWorkingDay}" class="w-full bg-gray-800 p-4 rounded-2xl">
+      </div>
+      <button onclick="saveGlobalSettings()" class="w-full bg-violet-600 py-4 rounded-2xl">Сохранить</button>
+      <button onclick="closeModal()" class="w-full bg-gray-700 py-4 rounded-2xl">Отмена</button>
+    </div>
+  `;
+  showModal(html);
+}
+
+function saveGlobalSettings() {
+  const newTitle = document.getElementById("titleInput").value || "Намусячено";
+  document.getElementById("title").textContent = newTitle;
+  firstWorkingDay = document.getElementById("firstDayInput").value || firstWorkingDay;
+
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  tx.objectStore(STORE_NAME).put({ firstWorkingDay }, "settings");
+
+  closeModal();
+  alert("Цикл 2/2 обновлён!");
+  openCalendar();
+}
+
+function exportData() {
+  const data = { firstWorkingDay, records };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `namusyacheno-backup-${getTodayStr()}.json`;
+  a.click();
+}
+
+function importData() { alert("Импорт пока не реализован"); }
+
+function loadStatistics() {
+  let total = 0;
+  let days = 0;
+
+  Object.keys(records).sort().forEach(date => {
+    const r = records[date];
+    if (r?.count > 0) {
+      total += r.count;
+      days++;
+    }
+  });
+
+  document.getElementById("totalCount").textContent = total;
+  document.getElementById("avgPerDay").textContent = days ? (total / days).toFixed(1) : 0;
+
+  calculateMonthPercent();
+  render30DayChart();
+}
+
+// Процент выполнения за текущий месяц
+function calculateMonthPercent() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+
+  let totalActual = 0;
+  let totalTarget = 0;
+  let daysInMonthWithData = 0;
+
+  Object.keys(records).forEach(date => {
+    if (date.startsWith(`${year}-${month}`)) {
+      const r = records[date];
+      totalActual += r.count || 0;
+      totalTarget += r.target || dailyTarget;
+      daysInMonthWithData++;
+    }
+  });
+
+  const percent = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+
+  document.getElementById("monthPercent").textContent = percent + "%";
+  document.getElementById("monthInfo").textContent = 
+    `${totalActual} из ${totalTarget} (${daysInMonthWithData} дней)`;
+}
+
+// ==================== УЛУЧШЕННЫЙ ГРАФИК ====================
+function render30DayChart() {
+  const canvas = document.getElementById("chart30");
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
+
+  const labels = [];
+  const data = [];
+  const targetLine = [];
+  const colors = [];
+  const today = new Date();
+
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    
+    const record = records[dateStr] || { count: 0, target: dailyTarget };
+    const percent = record.target > 0 ? (record.count / record.target) * 100 : 0;
+
+    labels.push(d.getDate());
+    data.push(record.count);
+    targetLine.push(record.target);
+
+    // Цвета в зависимости от выполнения
+    if (percent < 95) colors.push('#f87171');           // красный
+    else if (percent <= 110) colors.push('#4ade80');    // зелёный
+    else colors.push('#c084fc');                        // фиолетовый
+  }
+
+  chartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Намусячено',
+          data: data,
+          backgroundColor: colors,
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: 'План',
+          data: targetLine,
+          type: 'line',
+          borderColor: '#94a3b8',
+          borderWidth: 2,
+          borderDash: [5, 3],
+          pointRadius: 0,
+          tension: 0.1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        y: { 
+          beginAtZero: true,
+          grid: { display: false }        // Убрали сетку
+        },
+        x: { 
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderChart() {
+  const ctx = document.getElementById("chart30");
+  if (chartInstance) chartInstance.destroy();
+
+  const labels = [];
+  const data = [];
+  const today = new Date();
+
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    labels.push(d.getDate());
+    data.push(records[dateStr] ? records[dateStr].count : 0);
+  }
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Намусячено', data, backgroundColor: '#a5b4fc', borderRadius: 6 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } }}
+  });
+}
+
+// ==================== ПЛАН НА МЕСЯЦ ====================
+function setMonthlyPlan() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  const monthName = now.toLocaleString('ru-RU', { month: 'long' });
+
+  const totalPlan = prompt(`Введите общий план на ${monthName} ${year}:`, "500");
+  if (totalPlan === null || isNaN(totalPlan) || totalPlan <= 0) return;
+
+  const targetPerWorkingDay = Math.round(parseInt(totalPlan) / countWorkingDaysInMonth(year, month));
+
+  if (targetPerWorkingDay < 1) {
+    alert("Слишком маленький план на месяц");
+    return;
+  }
+
+  applyMonthlyPlan(year, month, targetPerWorkingDay);
+  alert(`План ${totalPlan} распределён по рабочим дням (${targetPerWorkingDay} за рабочий день)`);
+  
+  loadStatistics(); // обновляем статистику
+}
+
+function countWorkingDaysInMonth(year, month) {
+  let count = 0;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    if (isWorkingDay(dateStr)) count++;
+  }
+  return count;
+}
+
+function applyMonthlyPlan(year, month, targetPerDay) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    
+    if (!records[dateStr]) records[dateStr] = { count: 0, isExtra: false };
+    
+    records[dateStr].target = targetPerDay;   // ставим на ВСЕ дни
+
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(records[dateStr], dateStr);
+  }
+}
+
+// Обновлённая функция расчёта процента за месяц
+function calculateMonthPercent() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+
+  let totalActual = 0;
+  let totalTarget = 0;
+  let workingDaysPassed = 0;
+  let workingDaysTotal = 0;
+
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  Object.keys(records).forEach(date => {
+    if (date.startsWith(`${year}-${month}`)) {
+      const r = records[date];
+      if (isWorkingDay(date)) {
+        workingDaysTotal++;
+        if (parseInt(date.split('-')[2]) <= now.getDate()) {
+          workingDaysPassed++;
+        }
+      }
+      totalActual += r.count || 0;
+      totalTarget += r.target || dailyTarget;
+    }
+  });
+
+  const percent = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+
+  document.getElementById("monthPercent").textContent = percent + "%";
+  document.getElementById("monthInfo").innerHTML = 
+    `${totalActual} из ${totalTarget} ` + 
+    `<span class="text-gray-500">(${workingDaysPassed}/${workingDaysTotal} рабочих дней)</span>`;
+}
+
+// Запуск
+initDB();
+</script>
+</body>
+</html>
